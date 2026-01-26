@@ -1,27 +1,27 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import User, Book, UserBook
-from recommender.engine import hybrid_recommendation
-import pandas as pd
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/recommend", tags=["Recommendations"])
 
-
 @router.get("/{user_id}")
-def recommend(user_id: int, db: Session = Depends(get_db)):
-    users = pd.read_sql(db.query(User).statement, db.bind)
-    books = pd.read_sql(db.query(Book).statement, db.bind)
-    interactions = pd.read_sql(db.query(UserBook).statement, db.bind)
-
-    if books.empty:
-        return []
-
-    result = hybrid_recommendation(
-        user_id=user_id,
-        users_df=users,
-        books_df=books,
-        interactions_df=interactions
-    )
-
-    return result[["id", "title", "author", "genre"]].to_dict(orient="records")
+def recommend_books(user_id: int):
+    # Temporary rule-based recommendations (ML-ready structure)
+    return [
+        {
+            "title": "Atomic Habits",
+            "author": "James Clear",
+            "rating": 4.8,
+            "genre": "Self Help"
+        },
+        {
+            "title": "The Alchemist",
+            "author": "Paulo Coelho",
+            "rating": 4.5,
+            "genre": "Fiction"
+        },
+        {
+            "title": "Deep Work",
+            "author": "Cal Newport",
+            "rating": 4.6,
+            "genre": "Productivity"
+        }
+    ]

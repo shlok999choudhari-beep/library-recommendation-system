@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# For now we use SQLite (we will upgrade to PostgreSQL later)
 DATABASE_URL = "sqlite:///./library.db"
 
 engine = create_engine(
@@ -9,10 +8,7 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(bind=engine)
-
 Base = declarative_base()
-
-from sqlalchemy.orm import Session
 
 def get_db():
     db = SessionLocal()

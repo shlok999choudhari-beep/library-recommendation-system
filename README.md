@@ -1,6 +1,5 @@
 <<<<<<< HEAD
-# library-recommendation-system
-## Library Recommendation System
+# Library Recommendation System
 
 A FastAPI-based library recommendation system using hybrid filtering (content-based + collaborative filtering).
 
@@ -23,6 +22,4 @@ uvicorn app.main:app --reload
 - `/books/add` - Add new book
 - `/activity/update` - Update reading activity
 - `/recommend/{user_id}` - Get recommendations
-=======
-# library-recommendation-system
 >>>>>>> cacb47c711380a2dac2fd54b4492ca769049a25e

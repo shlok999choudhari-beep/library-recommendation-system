@@ -1,22 +1,44 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
+from app.schemas import UserCreate, UserLogin
+from app.utils.security import hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-@router.post("/login")
-def login(name: str, email: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == email).first()
+@router.post("/register")
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.email == user.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
 
+    new_user = User(
+        name=user.email.split('@')[0],  # Use email prefix as name
+        email=user.email,
+        hashed_password=hash_password(user.password),
+        role=user.role
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "User registered successfully"}
+
+@router.post("/login")
+def login(credentials: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == credentials.email).first()
     if not user:
-        user = User(name=name, email=email)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Handle users with no password (existing users)
+    if not user.hashed_password:
+        raise HTTPException(status_code=401, detail="Please register first")
+    
+    if not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     return {
         "user_id": user.id,
-        "name": user.name,
-        "email": user.email
+        "email": user.email,
+        "role": user.role or "user"
     }

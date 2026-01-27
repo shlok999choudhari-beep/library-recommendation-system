@@ -41,3 +41,15 @@ export const getRecommendations = async (userId) => {
   const response = await API.get(`/recommend/${userId}`);
   return response.data;
 };
+
+// User ratings
+export const getUserRatings = async (userId) => {
+  const response = await API.get(`/user/${userId}/ratings`);
+  return response.data;
+};
+
+// Update user name
+export const updateUserName = async (userId, name) => {
+  const response = await API.put(`/user/${userId}/name`, { name });
+  return response.data;
+};

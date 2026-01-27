@@ -5,6 +5,8 @@ from app.routes.auth import router as auth_router
 from app.routes.books import router as books_router
 from app.routes.activity import router as activity_router
 from app.routes.recommend import router as recommend_router
+from app.routes.admin import router as admin_router
+from app.routes.user import router as user_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -22,3 +24,5 @@ app.include_router(auth_router)
 app.include_router(books_router)
 app.include_router(activity_router)
 app.include_router(recommend_router)
+app.include_router(admin_router)
+app.include_router(user_router)

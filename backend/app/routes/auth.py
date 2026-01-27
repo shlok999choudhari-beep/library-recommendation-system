@@ -13,8 +13,12 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # Check admin PIN if trying to register as admin
+    if user.role == "admin" and user.admin_pin != "6556":
+        raise HTTPException(status_code=400, detail="Invalid admin PIN")
+
     new_user = User(
-        name=user.email.split('@')[0],  # Use email prefix as name
+        name=user.email.split('@')[0],
         email=user.email,
         hashed_password=hash_password(user.password),
         role=user.role
@@ -30,7 +34,6 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # Handle users with no password (existing users)
     if not user.hashed_password:
         raise HTTPException(status_code=401, detail="Please register first")
     
@@ -40,5 +43,6 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     return {
         "user_id": user.id,
         "email": user.email,
+        "name": user.name,
         "role": user.role or "user"
     }

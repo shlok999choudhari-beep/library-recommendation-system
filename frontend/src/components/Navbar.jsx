@@ -27,11 +27,33 @@ function Navbar({ user, onLogout, theme, toggleTheme }) {
               🏠 Home
             </Link>
             <Link 
-              to="/profile" 
-              className={`px-3 py-2 rounded-lg transition-all ${location.pathname === '/profile' ? 'bg-blue-500/20 text-blue-400' : `${theme === 'dark' ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-800'} hover:bg-white/10`}`}
+              to="/browse" 
+              className={`px-3 py-2 rounded-lg transition-all ${location.pathname === '/browse' ? 'bg-blue-500/20 text-blue-400' : `${theme === 'dark' ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-800'} hover:bg-white/10`}`}
             >
-              👤 Profile
+              🔍 Browse
             </Link>
+            <Link 
+              to="/library" 
+              className={`px-3 py-2 rounded-lg transition-all ${location.pathname === '/library' ? 'bg-blue-500/20 text-blue-400' : `${theme === 'dark' ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-800'} hover:bg-white/10`}`}
+            >
+              📚 Library
+            </Link>
+            {user.role !== 'admin' && (
+              <Link 
+                to="/books" 
+                className={`px-3 py-2 rounded-lg transition-all ${location.pathname === '/books' ? 'bg-blue-500/20 text-blue-400' : `${theme === 'dark' ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-800'} hover:bg-white/10`}`}
+              >
+                📚 Request Books
+              </Link>
+            )}
+            {user.role === 'admin' && (
+              <Link 
+                to="/admin" 
+                className={`px-3 py-2 rounded-lg transition-all ${location.pathname === '/admin' ? 'bg-blue-500/20 text-blue-400' : `${theme === 'dark' ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-800'} hover:bg-white/10`}`}
+              >
+                🛠️ Admin
+              </Link>
+            )}
           </div>
         </div>
 
@@ -45,12 +67,17 @@ function Navbar({ user, onLogout, theme, toggleTheme }) {
               <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
             </button>
           </li>
-          <li className={`flex items-center gap-2 ${theme === 'dark' ? 'bg-white/10 border-white/20 hover:bg-white/20' : 'bg-indigo-100/50 border-indigo-300/50 hover:bg-indigo-200/50 shadow-md'} px-3 py-2 rounded-lg backdrop-blur border transition-all`}>
-            <User size={16} className="text-green-500 animate-pulse" />
-            <span className={`${theme === 'dark' ? 'text-white' : 'text-indigo-800 font-medium'}`}>{user?.email}</span>
-            <span className={`text-xs ${theme === 'dark' ? 'bg-gradient-to-r from-gray-600 to-gray-700' : 'bg-gradient-to-r from-blue-500 to-purple-500'} px-2 py-1 rounded-full text-white font-medium`}>
-              {user?.role}
-            </span>
+          <li>
+            <Link
+              to="/profile"
+              className={`flex items-center gap-2 ${theme === 'dark' ? 'text-white hover:text-blue-400 bg-white/10 border-white/20 hover:bg-white/20' : 'text-blue-700 hover:text-purple-600 bg-blue-100/50 border-blue-300/50 hover:bg-blue-200/50 shadow-md'} cursor-pointer hover:scale-105 transition-all duration-200 p-2 rounded-lg border`}
+            >
+              <User size={16} className="text-green-500 animate-pulse" />
+              <span>Profile</span>
+              <span className={`text-xs ${theme === 'dark' ? 'bg-gradient-to-r from-gray-600 to-gray-700' : 'bg-gradient-to-r from-blue-500 to-purple-500'} px-2 py-1 rounded-full text-white font-medium`}>
+                {user?.role}
+              </span>
+            </Link>
           </li>
           <li>
             <button

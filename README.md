@@ -7,7 +7,6 @@ A modern, full-stack library management system that combines traditional library
 ## 🚀 Features
 
 ### 🔐 **Authentication & User Management**
-- Secure JWT-based authentication
 - Role-based access (User/Admin)
 - User profile management
 
@@ -170,4 +169,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ⭐ **Star this repository if you found it helpful!**
 
-📧 **Contact**: [Your Email] | 🌐 **Demo**: [Live Demo Link]
+📧 **Contact**: shlok999choudhari@gmail.com 

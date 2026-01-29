@@ -7,6 +7,8 @@ from app.routes.activity import router as activity_router
 from app.routes.recommend import router as recommend_router
 from app.routes.admin import router as admin_router
 from app.routes.user import router as user_router
+from app.routes.chatbot import router as chatbot_router
+from app.routes.library import router as library_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -26,3 +28,5 @@ app.include_router(activity_router)
 app.include_router(recommend_router)
 app.include_router(admin_router)
 app.include_router(user_router)
+app.include_router(chatbot_router)
+app.include_router(library_router)

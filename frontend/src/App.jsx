@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import FloatingChat from "./components/FloatingChat";
 import Home from "./pages/Home";
+import Browse from "./pages/Browse";
 import Profile from "./pages/Profile";
+import Library from "./pages/Library";
+import Books from "./pages/Books";
+import Admin from "./pages/Admin";
+import Chatbot from "./pages/Chatbot";
 import Login from "./pages/Login";
 import NamePopup from "./components/NamePopup";
-import { updateUserName } from "./services/api";
+import { updateUserName, clearChatHistory } from "./services/api";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -14,8 +20,8 @@ function App() {
 
   const handleLogin = (userData) => {
     setUser(userData);
-    // Show name popup if user doesn't have a name set
-    if (!userData.name || userData.name === userData.email.split('@')[0]) {
+    // Show name popup only if user doesn't have a name set AND it's not just the email prefix
+    if (!userData.name || userData.name.trim() === '' || userData.name === userData.email.split('@')[0]) {
       setShowNamePopup(true);
     }
   };
@@ -30,7 +36,12 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await clearChatHistory(user.user_id);
+    } catch (err) {
+      console.error("Failed to clear chat history:", err);
+    }
     setUser(null);
     setShowNamePopup(false);
   };
@@ -57,12 +68,19 @@ function App() {
         
         <Routes>
           <Route path="/" element={<Home user={user} onLogout={handleLogout} theme={theme} />} />
+          <Route path="/browse" element={<Browse user={user} theme={theme} />} />
           <Route path="/profile" element={<Profile user={user} theme={theme} />} />
+          <Route path="/library" element={<Library user={user} theme={theme} />} />
+          <Route path="/books" element={<Books user={user} theme={theme} />} />
+          <Route path="/admin" element={<Admin user={user} theme={theme} />} />
+          <Route path="/chatbot" element={<Chatbot user={user} theme={theme} />} />
         </Routes>
         
         {showNamePopup && (
           <NamePopup onSubmit={handleNameSubmit} theme={theme} />
         )}
+        
+        <FloatingChat user={user} theme={theme} />
       </div>
     </Router>
   );

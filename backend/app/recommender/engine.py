@@ -13,8 +13,8 @@ def hybrid_recommendation(user_id, users_df, books_df, interactions_df):
     user_interactions = interactions_df[interactions_df["user_id"] == user_id]
     
     if len(user_interactions) == 0:
-        # Return top 5 books by ID if no interactions
-        return books_df.head(5)
+        # Return top 10 books by ID if no interactions
+        return books_df.head(10)
     
     # Content-based filtering
     books_df["content"] = (
@@ -35,7 +35,7 @@ def hybrid_recommendation(user_id, users_df, books_df, interactions_df):
     user_book_indices = books_df[books_df["id"].isin(user_book_ids)].index
     
     if len(user_book_indices) == 0:
-        return books_df.head(5)
+        return books_df.head(10)
     
     # Weight by user ratings (higher rated books get more influence)
     user_ratings = [user_book_ratings[books_df.loc[idx, 'id']] for idx in user_book_indices]
@@ -52,5 +52,5 @@ def hybrid_recommendation(user_id, users_df, books_df, interactions_df):
     # Filter out already read books
     recommendations = books_df[~books_df["id"].isin(user_book_ids)]
     
-    # Return top 5 recommendations
-    return recommendations.nlargest(5, "score")
+    # Return top 10 recommendations
+    return recommendations.nlargest(10, "score")

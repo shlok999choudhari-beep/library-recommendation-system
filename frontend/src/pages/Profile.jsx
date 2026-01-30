@@ -144,7 +144,7 @@ function Profile({ user, theme }) {
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-yellow-400">⭐</span>
-                    <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{data.rating}</span>
+                    <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{data.avg_rating || data.rating}</span>
                   </div>
                 </div>
               </div>

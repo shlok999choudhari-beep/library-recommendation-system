@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000",
 });
 
 // Auth endpoints
@@ -96,6 +96,8 @@ export const clearChatHistory = async (userId) => {
   return response.data;
 };
 
+
+
 // Library management endpoints
 export const issueBook = async (userId, bookId) => {
   const response = await API.post("/library/issue", { user_id: userId, book_id: bookId });
@@ -122,6 +124,11 @@ export const markNotificationRead = async (notificationId) => {
   return response.data;
 };
 
+export const markAllNotificationsRead = async (userId) => {
+  const response = await API.put(`/library/${userId}/notifications/mark-all-read`);
+  return response.data;
+};
+
 export const getPendingRequests = async () => {
   const response = await API.get("/library/pending-requests");
   return response.data;
@@ -139,5 +146,20 @@ export const requestNewBook = async (userId, bookTitle, author) => {
 
 export const getBookRequests = async () => {
   const response = await API.get("/library/book-requests");
+  return response.data;
+};
+
+export const fulfillBookRequest = async (requestId) => {
+  const response = await API.post(`/library/book-requests/${requestId}/fulfill`);
+  return response.data;
+};
+
+export const rejectBookRequest = async (requestId) => {
+  const response = await API.post(`/library/book-requests/${requestId}/reject`);
+  return response.data;
+};
+
+export const deleteBook = async (bookId) => {
+  const response = await API.delete(`/books/${bookId}`);
   return response.data;
 };

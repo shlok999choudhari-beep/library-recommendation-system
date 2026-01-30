@@ -30,19 +30,22 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == credentials.email).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    if not user.hashed_password:
-        raise HTTPException(status_code=401, detail="Please register first")
-    
-    if not verify_password(credentials.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    try:
+        user = db.query(User).filter(User.email == credentials.email).first()
+        if not user or not user.hashed_password:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        if not verify_password(credentials.password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    return {
-        "user_id": user.id,
-        "email": user.email,
-        "name": user.name,
-        "role": user.role or "user"
-    }
+        return {
+            "user_id": user.id,
+            "email": user.email,
+            "name": user.name or user.email.split('@')[0],
+            "role": user.role or "user"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")

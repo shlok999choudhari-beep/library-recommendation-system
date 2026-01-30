@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import BookModal from "../components/BookModal";
-import { getBooks, updateActivity, issueBook } from "../services/api";
+import { getBooks, updateActivity, issueBook, deleteBook } from "../services/api";
 
 function Browse({ user, theme }) {
   const [allBooks, setAllBooks] = useState([]);
   const [displayedBooks, setDisplayedBooks] = useState([]);
+  const [booksPerPage] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [genreFilter, setGenreFilter] = useState("");
   const [ratingFilter, setRatingFilter] = useState(1);
@@ -20,11 +22,17 @@ function Browse({ user, theme }) {
 
   const loadBooks = async () => {
     try {
+      setLoading(true);
       const data = await getBooks();
+      console.log('Loaded books:', data.length);
       setAllBooks(data);
-      setDisplayedBooks(data.slice(0, 20));
+      setCurrentPage(1);
+      setDisplayedBooks(data.slice(0, booksPerPage));
     } catch (err) {
       console.error("Failed to load books:", err);
+      // Set empty array if API fails
+      setAllBooks([]);
+      setDisplayedBooks([]);
     } finally {
       setLoading(false);
     }
@@ -49,9 +57,11 @@ function Browse({ user, theme }) {
     const scrollY = window.scrollY;
     let filtered = allBooks;
 
+    // Search by title AND author
     if (term.trim()) {
       filtered = filtered.filter(book => 
-        book.title.toLowerCase().includes(term.toLowerCase())
+        book.title.toLowerCase().includes(term.toLowerCase()) ||
+        book.author.toLowerCase().includes(term.toLowerCase())
       );
     }
 
@@ -63,15 +73,44 @@ function Browse({ user, theme }) {
       filtered = filtered.filter(book => book.rating >= rating);
     }
 
-    if (!term.trim() && !genre && rating <= 1) {
-      filtered = filtered.slice(0, 20);
+    // Reset to first page when filters change
+    setCurrentPage(1);
+    
+    // Show first page of filtered results or all if filters applied
+    const hasFilters = term.trim() || genre || rating > 1;
+    if (hasFilters) {
+      setDisplayedBooks(filtered);
+    } else {
+      setDisplayedBooks(filtered.slice(0, booksPerPage));
     }
-
-    setDisplayedBooks(filtered);
     
     setTimeout(() => {
       window.scrollTo(0, scrollY);
     }, 0);
+  };
+  
+  const loadMoreBooks = () => {
+    const nextPage = currentPage + 1;
+    const endIndex = nextPage * booksPerPage;
+    
+    let filtered = allBooks;
+    
+    // Apply current filters
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(book => 
+        book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        book.author.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (genreFilter) {
+      filtered = filtered.filter(book => book.genre === genreFilter);
+    }
+    if (ratingFilter > 1) {
+      filtered = filtered.filter(book => book.rating >= ratingFilter);
+    }
+    
+    setDisplayedBooks(filtered.slice(0, endIndex));
+    setCurrentPage(nextPage);
   };
 
   const handleBookClick = (book) => {
@@ -122,6 +161,18 @@ function Browse({ user, theme }) {
     }
   };
 
+  const handleDeleteBook = async (bookId) => {
+    try {
+      await deleteBook(bookId);
+      setNotification("Book deleted successfully!");
+      setTimeout(() => setNotification(null), 3000);
+      loadBooks(); // Refresh book list
+    } catch (err) {
+      setNotification("Failed to delete book");
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
   if (loading) {
     return (
       <div className={`min-h-screen ${theme === 'dark' ? 'text-white' : 'text-black'} px-6 md:px-12 py-8`}>
@@ -150,7 +201,7 @@ function Browse({ user, theme }) {
           <div className="flex gap-3">
             <input
               type="text"
-              placeholder="Search books by title..."
+              placeholder="Search books by title or author..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
               className={`flex-1 px-4 py-2 rounded-lg border ${
@@ -240,52 +291,100 @@ function Browse({ user, theme }) {
         </div>
         
         <p className="text-center mb-4 text-sm opacity-75">
-          Showing {displayedBooks.length} books
+          Showing {displayedBooks.length} of {(() => {
+            let filtered = allBooks;
+            if (searchTerm.trim()) {
+              filtered = filtered.filter(book => 
+                book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                book.author.toLowerCase().includes(searchTerm.toLowerCase())
+              );
+            }
+            if (genreFilter) {
+              filtered = filtered.filter(book => book.genre === genreFilter);
+            }
+            if (ratingFilter > 1) {
+              filtered = filtered.filter(book => book.rating >= ratingFilter);
+            }
+            return filtered.length;
+          })()} books
           {searchTerm && ` for "${searchTerm}"`}
           {genreFilter && ` in ${genreFilter}`}
           {ratingFilter > 1 && ` with ${ratingFilter}+ stars`}
         </p>
         
         {displayedBooks.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {displayedBooks.map((book) => (
-              <div 
-                key={book.id} 
-                onClick={() => handleBookClick(book)}
-                className={`${theme === 'dark' ? 'bg-gray-900 hover:bg-gray-800' : 'bg-gray-50 border border-gray-300 hover:bg-white hover:shadow-xl'} rounded-lg transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 cursor-pointer group overflow-hidden`}
-              >
-                <div className="aspect-[3/4] bg-gray-200">
-                  <img 
-                    src={book.cover_image || 'https://via.placeholder.com/300x400/374151/9CA3AF?text=No+Cover'} 
-                    alt={book.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/300x400/374151/9CA3AF?text=No+Cover';
-                    }}
-                  />
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {displayedBooks.map((book) => (
+                <div 
+                  key={book.id} 
+                  onClick={() => handleBookClick(book)}
+                  className={`${theme === 'dark' ? 'bg-gray-900 hover:bg-gray-800' : 'bg-[#EFEBE9] border border-[#D7CCC8] hover:bg-[#D7CCC8] hover:shadow-xl'} rounded-lg transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 cursor-pointer group overflow-hidden`}
+                >
+                  <div className="aspect-[3/4] bg-gray-200">
+                    <img 
+                      src={book.cover_image || `https://loremflickr.com/300/400/book,artwork/all?lock=${book.id}`} 
+                      alt={book.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = `https://loremflickr.com/300/400/book,artwork/all?lock=${book.id}`;
+                      }}
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h4 className="font-bold text-lg mb-2 group-hover:text-blue-500 transition-colors line-clamp-2">{book.title}</h4>
+                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#8D6E63]'} mb-1 line-clamp-1`}>by {book.author}</p>
+                    <p className={`${theme === 'dark' ? 'text-blue-600' : 'text-[#5D4037]'} text-sm mb-2`}>{book.genre}</p>
+                    {book.rating > 0 && (
+                      <div className="flex items-center gap-1 mb-2">
+                        <span className="text-yellow-400">⭐</span>
+                        <span className="text-sm font-medium">{book.rating}</span>
+                      </div>
+                    )}
+                    <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm line-clamp-3`}>{book.description}</p>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <h4 className="font-bold text-lg mb-2 group-hover:text-blue-500 transition-colors line-clamp-2">{book.title}</h4>
-                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-1 line-clamp-1`}>by {book.author}</p>
-                  <p className="text-blue-600 text-sm mb-2">{book.genre}</p>
-                  {book.rating > 0 && (
-                    <div className="flex items-center gap-1 mb-2">
-                      <span className="text-yellow-400">⭐</span>
-                      <span className="text-sm font-medium">{book.rating}</span>
-                    </div>
-                  )}
-                  <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm line-clamp-3`}>{book.description}</p>
-                </div>
+              ))}
+            </div>
+            
+            {/* Load More Button */}
+            {(() => {
+              let filtered = allBooks;
+              if (searchTerm.trim()) {
+                filtered = filtered.filter(book => 
+                  book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  book.author.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+              }
+              if (genreFilter) {
+                filtered = filtered.filter(book => book.genre === genreFilter);
+              }
+              if (ratingFilter > 1) {
+                filtered = filtered.filter(book => book.rating >= ratingFilter);
+              }
+              return displayedBooks.length < filtered.length;
+            })() && (
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={loadMoreBooks}
+                  className={`${
+                    theme === 'dark' 
+                      ? 'bg-blue-600 hover:bg-blue-700' 
+                      : 'bg-[#6D4C41] hover:bg-[#5D4037]'
+                  } text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 hover:scale-105 shadow-lg`}
+                >
+                  Load More Books
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">📚</div>
-            <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+            <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-[#4E342E]'}`}>
               No books found
             </h3>
-            <p className={`${theme === 'dark' ? 'text-white/70' : 'text-gray-600'}`}>
+            <p className={`${theme === 'dark' ? 'text-white/70' : 'text-[#8D6E63]'}`}>
               Try adjusting your filters or search terms
             </p>
           </div>
@@ -299,6 +398,8 @@ function Browse({ user, theme }) {
         onRate={handleModalRate}
         onIssue={handleIssueBook}
         onAddToWishlist={handleModalWishlist}
+        onDelete={handleDeleteBook}
+        user={user}
         theme={theme}
       />
     </section>

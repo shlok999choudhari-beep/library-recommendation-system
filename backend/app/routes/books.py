@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
@@ -48,89 +48,128 @@ def get_book_cover_from_amazon(title, author):
                                 isbn = identifier['identifier']
                                 return f"https://images-na.ssl-images-amazon.com/images/P/{isbn}.01.L.jpg"
         
-        # Method 2: Generate Amazon search-based URL
-        search_term = f"{title}-{author}".lower()
-        search_term = ''.join(c if c.isalnum() else '-' for c in search_term)
-        search_term = '-'.join(filter(None, search_term.split('-')))  # Remove empty parts
-        
-        return f"https://images-na.ssl-images-amazon.com/images/P/{search_term}.jpg"
+        # Fallback: Generate a placeholder based on title
+        return f"https://via.placeholder.com/300x450/374151/9CA3AF?text={urllib.parse.quote(title[:20])}"
     except:
-        return None
+        return f"https://via.placeholder.com/300x450/374151/9CA3AF?text=Book+Cover"
 
-router = APIRouter(prefix="/books", tags=["Books"])
+def clean_brackets(text):
+    """Remove square brackets from text"""
+    if text:
+        return text.replace('[', '').replace(']', '').replace("'", "")
+    return text
+
+router = APIRouter(prefix="/books", tags=["books"])
+
+@router.get("/cover/{book_id}")
+def get_book_cover(book_id: int, db: Session = Depends(get_db)):
+    """Get book cover for a specific book"""
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        return {"cover_url": None}
+    
+    # If book already has a cover, return it
+    if book.cover_image:
+        return {"cover_url": book.cover_image}
+    
+    # Otherwise, fetch and save it
+    cover_url = get_book_cover_from_openlibrary(book.title, book.author)
+    book.cover_image = cover_url
+    db.commit()
+    
+    return {"cover_url": cover_url}
+
+@router.post("/add")
+def add_book(book_data: dict, db: Session = Depends(get_db)):
+    """Add a new book to the database"""
+    # Get cover image
+    cover_url = get_book_cover_from_openlibrary(book_data['title'], book_data['author'])
+    
+    new_book = Book(
+        title=book_data['title'],
+        author=book_data['author'],
+        genre=book_data.get('genre', ''),
+        description=book_data.get('description', ''),
+        cover_image=cover_url
+    )
+    
+    db.add(new_book)
+    db.commit()
+    db.refresh(new_book)
+    
+    return {"message": "Book added successfully", "book_id": new_book.id}
+
+@router.get("/")
+def get_books(db: Session = Depends(get_db)):
+    """Get all books with their average ratings using a single efficient query"""
+    # Optimized query: Fetch books and their average rating in one go using LEFT JOIN
+    books_query = db.query(
+        Book,
+        func.coalesce(func.avg(UserBook.rating), 0).label('avg_rating')
+    ).outerjoin(
+        UserBook, (Book.id == UserBook.book_id) & (UserBook.rating.isnot(None))
+    ).group_by(Book.id).all()
+    
+    result = []
+    for book, avg_rating in books_query:
+        result.append({
+            "id": book.id,
+            "title": book.title,
+            "author": clean_brackets(book.author),
+            "genre": clean_brackets(book.genre),
+            "description": book.description,
+            "cover_image": book.cover_image,
+            "rating": round(float(avg_rating), 1)
+        })
+    
+    return result
 
 @router.get("/weekly-top")
 def get_weekly_top_books(db: Session = Depends(get_db)):
-    """Get top 5 books read this week across all users"""
-    # Since UserBook doesn't have updated_at, get most popular books by read count
-    popular_reads = db.query(
+    """Get top 10 books read/rated (using overall top as proxy for weekly due to schema limitation)"""
+    # Note: UserBook doesn't have timestamps, so we return overall top books
+    
+    # Get books with most reads/ratings
+    top_books = db.query(
         Book.id,
         Book.title,
         Book.author,
         Book.genre,
-        func.count(UserBook.id).label('read_count')
+        Book.description,
+        Book.cover_image,
+        func.count(UserBook.id).label('read_count'),
+        func.avg(UserBook.rating).label('avg_rating')
     ).join(
         UserBook, Book.id == UserBook.book_id
-    ).filter(
-        UserBook.status == 'read'
     ).group_by(
-        Book.id, Book.title, Book.author, Book.genre
+        Book.id
     ).order_by(
         func.count(UserBook.id).desc()
-    ).limit(5).all()
+    ).limit(10).all()
     
-    return [{
-        "id": book.id,
-        "title": book.title,
-        "author": book.author,
-        "genre": book.genre,
-        "cover_image": db.query(Book.cover_image).filter(Book.id == book.id).scalar(),
-        "read_count": book.read_count
-    } for book in popular_reads]
-
-@router.post("/add")
-def add_book(
-    title: str,
-    author: str,
-    genre: str,
-    description: str,
-    db: Session = Depends(get_db)
-):
-    # Get cover image from Open Library API
-    cover_image = get_book_cover_from_openlibrary(title, author)
-    
-    book = Book(
-        title=title,
-        author=author,
-        genre=genre,
-        description=description,
-        cover_image=cover_image
-    )
-    db.add(book)
-    db.commit()
-    db.refresh(book)
-
-    return {"message": "Book added", "book_id": book.id}
-
-@router.get("/")
-def list_books(db: Session = Depends(get_db)):
-    from app.models import UserBook
-    books = db.query(Book).all()
     result = []
-    
-    for book in books:
-        # Calculate average rating
-        book_ratings = db.query(UserBook.rating).filter(UserBook.book_id == book.id).all()
-        avg_rating = sum(r[0] for r in book_ratings) / len(book_ratings) if book_ratings else 0.0
-        
+    for book in top_books:
         result.append({
             "id": book.id,
             "title": book.title,
-            "author": book.author,
-            "genre": book.genre,
+            "author": clean_brackets(book.author),
+            "genre": clean_brackets(book.genre),
             "description": book.description,
             "cover_image": book.cover_image,
-            "rating": round(avg_rating, 1)
+            "rating": round(float(book.avg_rating), 1) if book.avg_rating else 0.0
         })
     
     return result
+
+@router.delete("/{book_id}")
+def delete_book(book_id: int, db: Session = Depends(get_db)):
+    """Delete a book from the database"""
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    # Delete the book
+    db.delete(book)
+    db.commit()
+    
+    return {"message": "Book deleted successfully"}

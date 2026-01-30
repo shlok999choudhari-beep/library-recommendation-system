@@ -5,6 +5,17 @@ from app.models import BookIssue, Book, User, Notification, BookRequest
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 
+def clean_brackets(text):
+    """Remove square brackets and quotes from text fields"""
+    if not text:
+        return text
+    # Remove square brackets and quotes
+    cleaned = text.strip("[]'\"")
+    # If it contains comma-separated values, take the first one
+    if ',' in cleaned:
+        cleaned = cleaned.split(',')[0].strip("'\"")
+    return cleaned
+
 class IssueBook(BaseModel):
     user_id: int
     book_id: int
@@ -43,6 +54,20 @@ def request_book_issue(issue_data: IssueBook, db: Session = Depends(get_db)):
     db.add(book_issue)
     db.commit()
     
+    # Create notification for all admins
+    admins = db.query(User).filter(User.role == "admin").all()
+    user = db.query(User).filter(User.id == issue_data.user_id).first()
+    user_name = user.name or user.email if user else "A user"
+    
+    for admin in admins:
+        notification = Notification(
+            user_id=admin.id,
+            message=f"{user_name} requested to issue '{book.title}'",
+            type="book_issue_request"
+        )
+        db.add(notification)
+    db.commit()
+    
     return {"message": "Book issue request submitted. Waiting for admin approval."}
 
 @router.post("/approve/{issue_id}")
@@ -56,6 +81,16 @@ def approve_book_issue(issue_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Request is not pending")
     
     book_issue.status = "issued"
+    db.commit()
+    
+    # Create notification for the user
+    book = db.query(Book).filter(Book.id == book_issue.book_id).first()
+    notification = Notification(
+        user_id=book_issue.user_id,
+        message=f"Your book issue request for '{book.title}' has been approved!",
+        type="book_approved"
+    )
+    db.add(notification)
     db.commit()
     
     return {"message": "Book issue approved"}
@@ -76,7 +111,7 @@ def get_pending_requests(db: Session = Depends(get_db)):
         result.append({
             "issue_id": issue.id,
             "book_title": book.title,
-            "book_author": book.author,
+            "book_author": clean_brackets(book.author),
             "user_name": user.name or user.email,
             "requested_date": issue.issue_date
         })
@@ -93,6 +128,20 @@ def request_new_book(request_data: RequestBook, db: Session = Depends(get_db)):
         status="pending"
     )
     db.add(book_request)
+    db.commit()
+    
+    # Create notification for all admins
+    admins = db.query(User).filter(User.role == "admin").all()
+    user = db.query(User).filter(User.id == request_data.user_id).first()
+    user_name = user.name or user.email if user else "A user"
+    
+    for admin in admins:
+        notification = Notification(
+            user_id=admin.id,
+            message=f"{user_name} requested a new book: {request_data.book_title}",
+            type="book_request"
+        )
+        db.add(notification)
     db.commit()
     
     return {"message": "Book request submitted successfully"}
@@ -117,6 +166,54 @@ def get_book_requests(db: Session = Depends(get_db)):
         })
     
     return result
+
+@router.post("/book-requests/{request_id}/fulfill")
+def fulfill_book_request(request_id: int, db: Session = Depends(get_db)):
+    """Mark a book request as fulfilled (admin only)"""
+    book_request = db.query(BookRequest).filter(BookRequest.id == request_id).first()
+    if not book_request:
+        raise HTTPException(status_code=404, detail="Book request not found")
+    
+    if book_request.status != "pending":
+        raise HTTPException(status_code=400, detail="Request is not pending")
+    
+    book_request.status = "approved"
+    db.commit()
+    
+    # Create notification for the user
+    notification = Notification(
+        user_id=book_request.user_id,
+        message=f"Your book request '{book_request.book_title}' has been fulfilled!",
+        type="book_approved"
+    )
+    db.add(notification)
+    db.commit()
+    
+    return {"message": "Book request marked as fulfilled"}
+
+@router.post("/book-requests/{request_id}/reject")
+def reject_book_request(request_id: int, db: Session = Depends(get_db)):
+    """Reject a book request (admin only)"""
+    book_request = db.query(BookRequest).filter(BookRequest.id == request_id).first()
+    if not book_request:
+        raise HTTPException(status_code=404, detail="Book request not found")
+    
+    if book_request.status != "pending":
+        raise HTTPException(status_code=400, detail="Request is not pending")
+    
+    book_request.status = "rejected"
+    db.commit()
+    
+    # Create notification for the user
+    notification = Notification(
+        user_id=book_request.user_id,
+        message=f"Your book request '{book_request.book_title}' cannot be fulfilled at this time.",
+        type="book_rejected"
+    )
+    db.add(notification)
+    db.commit()
+    
+    return {"message": "Book request rejected"}
 
 @router.post("/return/{issue_id}")
 def return_book(issue_id: int, db: Session = Depends(get_db)):
@@ -148,7 +245,7 @@ def get_issued_books(user_id: int, db: Session = Depends(get_db)):
         result.append({
             "issue_id": issue.id,
             "book_title": book.title,
-            "book_author": book.author,
+            "book_author": clean_brackets(book.author),
             "issue_date": issue.issue_date,
             "due_date": issue.due_date,
             "is_overdue": is_overdue,
@@ -175,3 +272,13 @@ def mark_notification_read(notification_id: int, db: Session = Depends(get_db)):
         notification.read_status = True
         db.commit()
     return {"message": "Notification marked as read"}
+
+@router.put("/{user_id}/notifications/mark-all-read")
+def mark_all_notifications_read(user_id: int, db: Session = Depends(get_db)):
+    """Mark all notifications as read for a user"""
+    db.query(Notification).filter(
+        Notification.user_id == user_id,
+        Notification.read_status == False
+    ).update({"read_status": True})
+    db.commit()
+    return {"message": "All notifications marked as read"}

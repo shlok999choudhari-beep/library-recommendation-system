@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-function BookModal({ book, isOpen, onClose, onRate, onIssue, onAddToWishlist, theme, cardPosition }) {
+function BookModal({ book, isOpen, onClose, onRate, onIssue, onAddToWishlist, onDelete, theme, cardPosition, user }) {
   const [rating, setRating] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!isOpen) return null;
 
@@ -22,6 +23,20 @@ function BookModal({ book, isOpen, onClose, onRate, onIssue, onAddToWishlist, th
     onClose();
   };
 
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onDelete(book.id);
+    setShowDeleteConfirm(false);
+    onClose();
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn">
       <div 
@@ -36,11 +51,11 @@ function BookModal({ book, isOpen, onClose, onRate, onIssue, onAddToWishlist, th
           <div className="flex gap-4">
             <div className="w-24 h-32 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
               <img 
-                src={book.cover_image || 'https://via.placeholder.com/96x128/374151/9CA3AF?text=No+Cover'} 
+                src={book.cover_image || `https://loremflickr.com/300/400/book,artwork/all?lock=${book.id}`} 
                 alt={book.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/96x128/374151/9CA3AF?text=No+Cover';
+                  e.target.src = `https://loremflickr.com/300/400/book,artwork/all?lock=${book.id}`;
                 }}
               />
             </div>
@@ -118,8 +133,44 @@ function BookModal({ book, isOpen, onClose, onRate, onIssue, onAddToWishlist, th
           >
             💖 Add to Wishlist
           </button>
+          
+          {/* Delete Button - Only for Admin */}
+          {user && user.role === 'admin' && (
+            <button
+              onClick={handleDeleteClick}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold"
+            >
+              🗑️ Delete Book
+            </button>
+          )}
         </div>
       </div>
+      
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+          <div className={`${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-black'} rounded-xl p-6 max-w-sm w-full shadow-2xl`}>
+            <h3 className="text-xl font-bold mb-4">⚠️ Confirm Deletion</h3>
+            <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-6`}>
+              Are you sure you want to delete <span className="font-semibold">"{book.title}"</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelDelete}
+                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,6 +7,17 @@ from pydantic import BaseModel
 from datetime import datetime
 import json
 
+def clean_brackets(text):
+    """Remove square brackets and quotes from text fields"""
+    if not text:
+        return text
+    # Remove square brackets and quotes
+    cleaned = text.strip("[]'\"")
+    # If it contains comma-separated values, take the first one
+    if ',' in cleaned:
+        cleaned = cleaned.split(',')[0].strip("'\"")
+    return cleaned
+
 class NameUpdate(BaseModel):
     name: str
 
@@ -17,15 +28,24 @@ router = APIRouter(prefix="/user", tags=["User"])
 
 @router.get("/{user_id}/ratings")
 def get_user_ratings(user_id: int, db: Session = Depends(get_db)):
-    """Get all ratings for a specific user with book titles"""
+    """Get all ratings for a specific user with book titles and average ratings"""
     ratings = db.query(UserBook, Book).join(Book, UserBook.book_id == Book.id).filter(
         UserBook.user_id == user_id
     ).all()
     
     result = {}
     for user_book, book in ratings:
+        # Calculate average rating for this book from all users
+        avg_rating_query = db.query(func.avg(UserBook.rating)).filter(
+            UserBook.book_id == book.id,
+            UserBook.rating.isnot(None)
+        ).scalar()
+        
+        avg_rating = round(float(avg_rating_query), 1) if avg_rating_query else 0.0
+        
         result[user_book.book_id] = {
-            "rating": user_book.rating,
+            "rating": user_book.rating,  # User's personal rating
+            "avg_rating": avg_rating,     # Average rating from all users
             "status": user_book.status,
             "title": book.title
         }
@@ -82,7 +102,7 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
         UserBook.status == 'read'
     ).group_by(Book.genre).order_by(func.count(Book.genre).desc()).first()
     
-    favorite_genre = favorite_genre_query[0] if favorite_genre_query else "Unknown"
+    favorite_genre = clean_brackets(favorite_genre_query[0]) if favorite_genre_query else "Unknown"
     
     # Calculate user rank based on books read
     user_rank_query = db.query(
@@ -119,8 +139,8 @@ def get_user_wishlist(user_id: int, db: Session = Depends(get_db)):
     return [{
         "id": book.id,
         "title": book.title,
-        "author": book.author,
-        "genre": book.genre
+        "author": clean_brackets(book.author),
+        "genre": clean_brackets(book.genre)
     } for _, book in wishlist]
 
 @router.get("/{user_id}/preferences")

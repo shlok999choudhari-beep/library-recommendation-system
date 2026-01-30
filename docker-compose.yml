@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the local database file to the container
+      # Host Path : Container Path
+      - ./backend/library.db:/app/library.db
+    environment:
+      - DATABASE_URL=sqlite:///./library.db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    # Note: Environment variables for Vite must be present at BUILD time (in Dockerfile)
+    # or replaced at runtime. For simplicity here, we assume standard build.

@@ -88,3 +88,4 @@ class ChatHistory(Base):
     message = Column(Text, nullable=False)
     response = Column(Text)
     timestamp = Column(DateTime, default=func.now())
+

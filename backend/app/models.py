@@ -67,7 +67,7 @@ class UserPreference(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
-   from sqlalchemy import JSON
+  
 preferred_genres = Column(JSON)
 
     onboarding_completed = Column(Boolean, default=False)

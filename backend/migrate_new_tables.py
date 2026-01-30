@@ -6,6 +6,7 @@ from app.models import *
 engine = create_engine("sqlite:///./library.db")
 
 # Create all new tables
+# hii
 Base.metadata.create_all(bind=engine)
 
 print("✅ All new tables created successfully!")

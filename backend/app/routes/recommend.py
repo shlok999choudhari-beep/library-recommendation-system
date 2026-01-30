@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 import pandas as pd
 from ..database import get_db
-from ..models import Book, User, UserBook, UserPreference
+from ..models import Book, User, UserBook, UserPreferences
 from ..recommender.engine import hybrid_recommendation
 import traceback
 import json

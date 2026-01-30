@@ -9,6 +9,8 @@ from app.routes.admin import router as admin_router
 from app.routes.user import router as user_router
 from app.routes.library import router as library_router
 from app.routes.chatbot import router as chatbot_router
+from fastapi.middleware.cors import CORSMiddleware
+
 
 try:
     Base.metadata.create_all(bind=engine)
@@ -17,6 +19,18 @@ except Exception as e:
 
 
 app = FastAPI(title="Library Recommendation System")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://library-recommendation-system-nine.vercel.app",
+        "http://localhost:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 app.add_middleware(
     CORSMiddleware,

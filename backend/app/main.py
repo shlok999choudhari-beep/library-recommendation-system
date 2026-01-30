@@ -10,7 +10,11 @@ from app.routes.user import router as user_router
 from app.routes.library import router as library_router
 from app.routes.chatbot import router as chatbot_router
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print("Database not ready yet:", e)
+
 
 app = FastAPI(title="Library Recommendation System")
 

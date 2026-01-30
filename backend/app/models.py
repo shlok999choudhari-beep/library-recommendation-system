@@ -62,15 +62,17 @@ class Notification(Base):
     read_status = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
 
-class UserPreference(Base):
+class UserPreferences(Base):
     __tablename__ = "user_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
-  
-preferred_genres = Column(JSON)
 
     onboarding_completed = Column(Boolean, default=False)
+    preferred_genres = Column(JSON)
+
+    user = relationship("User", back_populates="preferences")
+
 
 class BookIssue(Base):
     __tablename__ = "book_issues"

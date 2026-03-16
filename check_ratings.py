@@ -14,7 +14,7 @@ print('\nRatings per user:')
 for row in cursor.fetchall():
     print(f'  User {row[0]}: {row[1]} ratings')
 
-# Check specific user's ratings with details
+# Check specific user's ratings with details and calculate avg rating 
 cursor.execute('''
     SELECT ub.user_id, ub.book_id, ub.rating, ub.status, b.title 
     FROM user_books ub 

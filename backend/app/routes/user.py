@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from app.database import get_db
-from app.models import UserBook, User, Book, UserPreference
+from app.models import UserBook, User, Book, UserPreferences
 from pydantic import BaseModel
 from datetime import datetime
 import json
@@ -146,7 +146,7 @@ def get_user_wishlist(user_id: int, db: Session = Depends(get_db)):
 @router.get("/{user_id}/preferences")
 def get_user_preferences(user_id: int, db: Session = Depends(get_db)):
     """Get user preferences and onboarding status"""
-    prefs = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+    prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
     if not prefs:
         return {"onboarding_completed": False, "preferred_genres": []}
     
@@ -158,10 +158,10 @@ def get_user_preferences(user_id: int, db: Session = Depends(get_db)):
 @router.post("/{user_id}/preferences")
 def update_user_preferences(user_id: int, prefs_data: PreferencesUpdate, db: Session = Depends(get_db)):
     """Update user preferences and mark onboarding as complete"""
-    prefs = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+    prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
     
     if not prefs:
-        prefs = UserPreference(
+        prefs = UserPreferences(
             user_id=user_id,
             preferred_genres=json.dumps(prefs_data.preferred_genres),
             onboarding_completed=True

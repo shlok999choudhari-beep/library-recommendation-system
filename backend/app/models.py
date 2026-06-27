@@ -11,8 +11,13 @@ class User(Base):
     name = Column(String)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
-    role = Column(String, default="user")  # user or admin
+    role = Column(String, default="user")
 
+    preferences = relationship(
+        "UserPreferences",
+        back_populates="user",
+        uselist=False
+    )
 class Book(Base):
     __tablename__ = "books"
 

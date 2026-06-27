@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import Base, engine
+from sqlalchemy.orm import Session
+from app.database import Base, engine, SessionLocal
+from app.models import Book
 from app.routes.auth import router as auth_router
 from app.routes.books import router as books_router
 from app.routes.activity import router as activity_router
@@ -16,6 +18,33 @@ try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:
     print("Database not ready yet:", e)
+
+
+def seed_default_books():
+    db: Session = SessionLocal()
+    try:
+        if db.query(Book).count() > 0:
+            return
+
+        default_books = [
+            Book(title="The Hobbit", author="J.R.R. Tolkien", genre="Fantasy", description="A classic adventure in Middle-earth."),
+            Book(title="1984", author="George Orwell", genre="Dystopian", description="A chilling political dystopia."),
+            Book(title="Pride and Prejudice", author="Jane Austen", genre="Romance", description="A witty romance of manners."),
+            Book(title="The Da Vinci Code", author="Dan Brown", genre="Mystery", description="A fast-paced thriller with hidden clues."),
+            Book(title="Atomic Habits", author="James Clear", genre="Self-Help", description="Practical strategies for building better habits."),
+            Book(title="Sapiens", author="Yuval Noah Harari", genre="History", description="A sweeping history of humankind."),
+        ]
+        db.add_all(default_books)
+        db.commit()
+        print("Seeded default books into the database.")
+    except Exception as e:
+        db.rollback()
+        print("Failed to seed default books:", e)
+    finally:
+        db.close()
+
+
+seed_default_books()
 
 
 app = FastAPI(title="Library Recommendation System")

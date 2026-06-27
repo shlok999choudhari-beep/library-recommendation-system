@@ -1,7 +1,23 @@
 import { useState } from "react";
 
+const FALLBACK_GENRES = [
+  "Fantasy",
+  "Science Fiction",
+  "Mystery",
+  "Romance",
+  "Thriller",
+  "Historical Fiction",
+  "Young Adult",
+  "Nonfiction",
+  "Biography",
+  "Self-Help"
+];
+
 function GenreOnboarding({ onComplete, theme, availableGenres }) {
   const [selectedGenres, setSelectedGenres] = useState([]);
+  const genreOptions = Array.from(
+    new Set([...(Array.isArray(availableGenres) ? availableGenres : []), ...FALLBACK_GENRES].filter(Boolean))
+  );
 
   const toggleGenre = (genre) => {
     setSelectedGenres(prev => 
@@ -28,7 +44,7 @@ function GenreOnboarding({ onComplete, theme, availableGenres }) {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8 max-h-60 overflow-y-auto">
-          {availableGenres.map(genre => (
+          {genreOptions.map(genre => (
             <button
               key={genre}
               onClick={() => toggleGenre(genre)}

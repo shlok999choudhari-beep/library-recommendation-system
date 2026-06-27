@@ -97,12 +97,26 @@ function Home({ user, onLogout, theme }) {
         .sort(([,a], [,b]) => b - a)
         .slice(0, 12)
         .map(([genre]) => genre);
+
+      const fallbackGenres = [
+        "Fantasy",
+        "Science Fiction",
+        "Mystery",
+        "Romance",
+        "Thriller",
+        "Historical Fiction",
+        "Young Adult",
+        "Nonfiction",
+        "Biography",
+        "Self-Help"
+      ];
+      const resolvedGenres = topGenres.length > 0 ? topGenres : fallbackGenres;
       
-      setAvailableGenres(topGenres);
+      setAvailableGenres(resolvedGenres);
       
       // Reduce to 3 genre rows instead of 5 for faster loading
       const booksByGenre = {};
-      topGenres.slice(0, 3).forEach(genre => {
+      resolvedGenres.slice(0, 3).forEach(genre => {
         booksByGenre[genre] = data.filter(book => {
           const cleanGenre = book.genre ? book.genre.replace(/[\[\]'"]/g, '').split(',')[0].trim() : '';
           return cleanGenre === genre;
